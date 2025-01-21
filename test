@@ -1,0 +1,46 @@
+# Load necessary library
+library(tesseract)
+
+# Define the path to the PNG file
+png_path <- "/Users/jgrandinetti/Documents/SchoolDownloads/F24 (M1)/STAR/IMG_5521.jpg"
+
+# Create a Tesseract engine
+tesseract_engine <- tesseract(language = "eng")
+
+# Apply OCR to extract text from the PNG file
+extracted_text <- ocr(png_path, engine = tesseract_engine)
+
+# Print the raw OCR result
+cat("Extracted text:\n", extracted_text, "\n\n")
+
+# Extract numbers (including negative signs) with nearby words as descriptors
+pattern <- "(\\b(?:[A-Za-z]+\\s*){0,2})\\b(-?\\d+(?:\\.\\d+)?)\\b(?:\\s*(?:[A-Za-z]+\\s*){0,2})"
+
+matches <- gregexpr(pattern, extracted_text, perl = TRUE)
+results <- regmatches(extracted_text, matches)[[1]]
+
+# Process matches to separate descriptors and numbers
+extracted_data <- data.frame(
+  Descriptor = character(0),
+  Number = numeric(0),
+  stringsAsFactors = FALSE
+)
+
+for (match in results) {
+  # Split the match into descriptor and number
+  if (grepl("-?\\d+", match)) {
+    number <- regmatches(match, regexpr("-?\\d+(?:\\.\\d+)?", match))[[1]]
+    descriptor <- gsub(number, "", match)  # Remove the number to get the descriptor
+    descriptor <- trimws(descriptor)       # Trim whitespace
+    extracted_data <- rbind(
+      extracted_data,
+      data.frame(Descriptor = descriptor, Number = as.numeric(number), stringsAsFactors = FALSE)
+    )
+  }
+}
+
+# Print the extracted data
+print(extracted_data)
+
+# Optional: Save to CSV
+write.csv(extracted_data, "extracted_numbers_with_context.csv", row.names = FALSE)
